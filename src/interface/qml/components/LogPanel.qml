@@ -5,8 +5,10 @@ import Qt.labs.platform 1.1 as Platform
 
 Item {
     id: root
-    signal clearRequested
-    signal copyRequested
+        signal
+    clearRequested
+        signal
+    copyRequested
     property alias model: listView.model
 
     Rectangle {

@@ -5,6 +5,7 @@ Item {
     id: root
     property url source
     property rect clipRect: Qt.rect(0, 0, 100, 100)
+
     signal statusChanged(string status, real paintedW, real paintedH)
 
     Rectangle {

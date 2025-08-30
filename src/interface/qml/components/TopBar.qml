@@ -6,6 +6,7 @@ Item {
     id: root
     property alias title: titleLabel.text
     property var layersModel: []
+
     signal layerSelected(int index, string name)
 
     implicitHeight: 48

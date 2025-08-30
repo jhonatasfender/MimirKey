@@ -1,23 +1,13 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import QtQuick.Controls 2.15 as QQC
-import Keymaps 1.0
 
-ApplicationWindow {
+Item {
     id: root
-    visible: true
-    width: 1200
-    height: 800
-    title: qsTr("Sofle Keymap Mapper")
-
-    color: "#0a0a0a"
 
     property rect svgViewRect: Qt.rect(0, 0, 956, 390)
 
-    ListModel {
-        id: logsModel
-    }
+    ListModel { id: logsModel }
 
     function log(level, message, meta) {
         const entry = {
@@ -29,20 +19,6 @@ ApplicationWindow {
         logsModel.append(entry);
         if (logsModel.count > 500)
             logsModel.remove(0, logsModel.count - 500);
-    }
-
-    header: ToolBar {
-        contentItem: TopBar {
-            anchors.fill: parent
-            title: root.title
-            layersModel: vmInjected.layers
-            onLayerSelected: function (index, name) {
-                root.log("info", "layer.selected", {
-                    index: index,
-                    layer: name
-                });
-            }
-        }
     }
 
     ColumnLayout {
@@ -64,7 +40,7 @@ ApplicationWindow {
                 id: keymapView
                 anchors.fill: parent
                 anchors.margins: 16
-                source: Qt.resolvedUrl("assets/keymap.svg")
+                source: Qt.resolvedUrl("../assets/keymap.svg")
                 clipRect: root.svgViewRect
                 onStatusChanged: function (status, w, h) {
                     root.log("debug", "svg.status", {
@@ -109,11 +85,6 @@ ApplicationWindow {
         }
     }
 
-    Component.onCompleted: {
-        vmInjected.loadDemo();
-        root.log("info", "app.started");
-    }
-
     Connections {
         target: vmInjected
 
@@ -144,3 +115,5 @@ ApplicationWindow {
         }
     }
 }
+
+

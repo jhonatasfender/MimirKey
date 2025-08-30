@@ -22,8 +22,6 @@ else()
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# Cross-platform Qt discovery (Qt6 preferred, fallback to Qt7) You can still
-# override via -DQt6_DIR=... or -DCMAKE_PREFIX_PATH=...
 if(NOT CMAKE_PREFIX_PATH)
   list(
     APPEND
@@ -35,7 +33,7 @@ if(NOT CMAKE_PREFIX_PATH)
     "/opt/local/lib/cmake")
 endif()
 
-set(_qt6_hints ' "$ENV{Qt6_DIR}" "$ENV{QT_DIR}/lib/cmake/Qt6"
+set(_qt6_hints "$ENV{Qt6_DIR}" "$ENV{QT_DIR}/lib/cmake/Qt6"
                "/usr/lib/x86_64-linux-gnu/cmake/Qt6")
 set(_qt7_hints "$ENV{Qt7_DIR}" "$ENV{QT_DIR}/lib/cmake/Qt7")
 
@@ -67,7 +65,28 @@ set(PROJECT_SOURCES
     src/application/usecases/LoadKeymap.cpp
     src/infrastructure/fs/FileKeymapRepository.cpp
     src/application/usecases/CopyText.hpp
-    src/infrastructure/fs/QtClipboardRepository.hpp)
+    src/infrastructure/fs/QtClipboardRepository.hpp
+    src/infrastructure/input/EvdevKeyboardMonitor.cpp
+    src/infrastructure/input/EvdevKeyboardMonitor.hpp)
+
+set(KEYMAPS_ENABLE_BLE
+    ON
+    CACHE BOOL "Enable BLE layer monitor")
+set(HAVE_QT_BLUETOOTH OFF)
+if(KEYMAPS_ENABLE_BLE)
+  find_package(
+    Qt${QT_VERSION_MAJOR}
+    COMPONENTS Bluetooth
+    QUIET)
+  if(Qt${QT_VERSION_MAJOR}Bluetooth_FOUND)
+    set(HAVE_QT_BLUETOOTH ON)
+    list(APPEND PROJECT_SOURCES src/infrastructure/ble/ZmkBleLayerMonitor.cpp
+         src/infrastructure/ble/ZmkBleLayerMonitor.hpp)
+  else()
+    message(STATUS "Qt Bluetooth not found; disabling BLE monitor")
+    set(KEYMAPS_ENABLE_BLE OFF)
+  endif()
+endif()
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
@@ -77,15 +96,25 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(
   ${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Quick
                           Qt${QT_VERSION_MAJOR}::Qml Qt${QT_VERSION_MAJOR}::Svg)
+if(HAVE_QT_BLUETOOTH)
+  target_link_libraries(${PROJECT_NAME}
+                        PRIVATE Qt${QT_VERSION_MAJOR}::Bluetooth)
+endif()
 
-# Apply Qt project defaults if available
+target_compile_definitions(
+  ${PROJECT_NAME} PRIVATE KEYMAPS_ENABLE_BLE=$<BOOL:${HAVE_QT_BLUETOOTH}>)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBEVDEV REQUIRED libevdev)
+target_include_directories(${PROJECT_NAME} PRIVATE ${LIBEVDEV_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBEVDEV_LIBRARIES})
+
 if(COMMAND qt_standard_project_setup)
   qt_standard_project_setup()
 endif()
 
-# QML module/resources
 if(COMMAND qt_policy)
-  qt_policy(SET QTP0001 NEW) # default resource prefix for QML modules
+  qt_policy(SET QTP0001 NEW)
 endif()
 qt_add_qml_module(
   ${PROJECT_NAME}
@@ -103,7 +132,6 @@ qt_add_qml_module(
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
 
-# Convenience target to format sources
 add_custom_target(
   format
   COMMAND ${CMAKE_COMMAND} -E env HOME=$ENV{HOME} bash
