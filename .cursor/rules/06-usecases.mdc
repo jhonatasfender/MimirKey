@@ -1,0 +1,6 @@
+### Use Cases (Application Layer)
+
+- Each use case is a class with a single public `execute()` method that accepts an input DTO and returns a Result/DTO.
+- No UI or Qt dependencies. Orchestrate repositories and domain logic only.
+- Keep inputs/outputs immutable structs.
+- Examples: `LoadKeymap`, `SelectLayer`, `ComputeChordBindings`, `ExportKeyLog`.

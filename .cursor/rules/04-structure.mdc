@@ -1,0 +1,14 @@
+### Structure
+
+- Root layout (CMake + Qt project):
+  - `cmake/`, `CMakeLists.txt`
+  - `src/domain/` (entities, value objects)
+  - `src/application/` (use cases, DTOs)
+  - `src/interface/` (Qt UI: QML or Widgets; view models)
+    - `src/interface/qml/components/` (small reusable QML components, PascalCase files)
+  - `src/infrastructure/` (repositories/adapters; platform integrations)
+  - `src/shared/` (utility types, error types, result)
+  - `tests/` (unit tests for domain/application)
+- Keep files small and focused. One class per file. Avoid god objects.
+  - QML file order: id → properties → signals → functions → visual props → children → states → transitions.
+  - Do not mix anchors and `QtQuick.Layouts` on the same item.

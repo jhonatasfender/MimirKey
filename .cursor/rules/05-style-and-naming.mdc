@@ -1,0 +1,10 @@
+### Style & Naming
+
+- English only for identifiers and documentation.
+- Prefer explicit, intention-revealing names over comments.
+- Functions: <= 30 lines ideally; extract helpers when needed.
+- Classes: single responsibility; avoid mixed concerns.
+- No Hungarian notation. Suffix interfaces with `Port` when needed (e.g., `KeymapRepositoryPort`).
+- Error handling: use `expected<T,E>`-like (std::expected if available) or a small Result type; avoid exceptions in hot paths.
+ - QML: files/components in PascalCase; ids camelCase; signals camelCase (past tense when emitted).
+ - Document the public API of QML components at the top of each file.

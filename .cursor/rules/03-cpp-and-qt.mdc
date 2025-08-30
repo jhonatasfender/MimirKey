@@ -1,0 +1,19 @@
+### C++ and Qt Conventions
+
+- C++20 or newer. Enable warnings-as-errors where feasible. Use strong typing; avoid raw pointers in application/domain (use smart pointers or values).
+- Naming: PascalCase for types, camelCase for variables/functions, SCREAMING_SNAKE_CASE for constants.
+- Use std::unique_ptr for ownership; std::shared_ptr only when shared lifetime is required.
+- Avoid comments that restate code. Prefer clear names and small functions.
+- Headers: keep minimal includes; prefer forward declarations in headers.
+- Qt:
+  - Qt 6/7 with Qt Quick Controls 2 for modern UI or Qt Widgets if necessary.
+  - Separate UI (QML/Widgets) from logic (C++). Expose application/use cases via QAbstractListModel or QObjects with Q_PROPERTY.
+  - Style: modern, dark-friendly theme by default; responsive layouts.
+- QML:
+  - Keep QML declarative and thin; move heavy logic to C++ (use cases / view models).
+  - Package QML via `qt_add_qml_module`; avoid runtime file paths for assets; prefer SVG.
+  - Use singletons (e.g., `Theme`) for shared config/palette; avoid global JS objects.
+  - Prefer composition over inheritance; expose customization via properties/signals.
+  - Prefer versionless imports on Qt 6+ (e.g., `import QtQuick`), unless a fixed version is required.
+  - Enable `QT_QML_GENERATE_QMLLS_INI=ON` and use `qmllint` in CI to keep QML warnings clean.
+- Testing: use a lightweight test framework (e.g., Catch2 or QtTest) for domain and use cases.

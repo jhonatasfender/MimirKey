@@ -1,0 +1,8 @@
+### PR Checklist
+
+- Build: CMake config OK; project builds on CI; no compiler warnings.
+- Style: naming matches rules; functions/classes are small; no god objects.
+- Architecture: use cases isolated; no UI logic in application/domain; repositories only in infrastructure.
+- Types: strong typing; no loose `void*`/C-style casts; headers are minimal.
+- Tests: unit tests for domain/use cases updated and passing.
+- UI: consistent theme, responsive layout, accessible controls.

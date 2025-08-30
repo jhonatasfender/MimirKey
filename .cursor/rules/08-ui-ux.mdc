@@ -1,0 +1,12 @@
+### UI/UX (Qt)
+
+- Prefer Qt Quick (QML) with Qt Quick Controls 2 for a modern, responsive UI. Support dark theme first.
+- Keep QML declarative and thin. Business logic stays in C++ use cases.
+- Expose data via QAbstractListModel/QObject with properties and signals.
+- Components should be small, reusable, and styled consistently (spacing, typography, colors).
+- Keyboard view: scalable SVG/Canvas rendering, clickable keys, and clear highlighting. Match the modern look from the reference image.
+ - QML specifics:
+   - Use `QtQuick.Layouts` and anchors responsibly; don't mix both on the same item.
+   - Defer offscreen content with `Loader`/`visible`; minimize heavy JavaScript and binding loops.
+   - Keep assets in the QML module (via `qt_add_qml_module`); prefer SVG.
+   - Centralize theme/colors in a QML singleton (`Theme`).

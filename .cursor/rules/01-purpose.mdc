@@ -1,0 +1,5 @@
+### Purpose
+
+- Build a modern desktop application using C++20 and Qt 6/Qt 7 (latest available) to map, analyze, and visualize split keyboard keymaps and layers.
+- Focus on clear domain modeling (layers, bindings, chords) and robust architecture that supports future features like behavior simulation and hardware integration.
+- Embrace SOLID and Clean Architecture to keep codebases modular, testable, and maintainable.

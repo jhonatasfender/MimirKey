@@ -1,0 +1,6 @@
+### Repositories (Data Access Ports)
+
+- Define narrow interfaces for data access (e.g., `KeymapRepositoryPort`).
+- Implementations live in `src/infrastructure/` and may use filesystem, HID, serial, or network.
+- Repositories return domain objects or DTOs; they do not embed business logic.
+- Prefer dependency injection for repository instances (constructor injection in use cases).

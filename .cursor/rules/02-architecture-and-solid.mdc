@@ -1,0 +1,15 @@
+### Architecture & SOLID
+
+- Follow Clean Architecture layering:
+  - Domain (Entities/Value Objects): pure C++, no Qt. Business rules.
+  - Application (Use Cases): orchestrate domain behaviors; depend on domain; no UI, no frameworks.
+  - Interface (Qt UI/ViewModels): presentation and interaction. Talks to Application via ports.
+  - Infrastructure (Repositories/Adapters): implement data access and OS/hardware integration.
+- SOLID principles:
+  - Single Responsibility: small classes, one reason to change.
+  - Open/Closed: extend via interfaces and composition; avoid modifying core classes.
+  - Liskov Substitution: interfaces with clear contracts; avoid optional behavior surprises.
+  - Interface Segregation: focused, small interfaces; prefer narrow repository/use case ports.
+  - Dependency Inversion: high-level policy depends on abstractions; inject implementations.
+- No Services. Use explicit Use Cases and Repositories with clear responsibilities and inputs/outputs.
+- Favor immutability and value semantics in domain types. Prefer composition over inheritance.
