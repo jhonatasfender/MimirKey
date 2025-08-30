@@ -32,6 +32,7 @@ class ZmkBleLayerMonitor : public QObject {
     void onDiscoveryFinished();
     void onServiceStateChanged(QLowEnergyService::ServiceState);
     void onCharacteristicChanged(const QLowEnergyCharacteristic&, const QByteArray&);
+    void onCharacteristicRead(const QLowEnergyCharacteristic&, const QByteArray&);
 
    private:
     QString m_address;

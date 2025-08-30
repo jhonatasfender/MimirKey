@@ -6,7 +6,8 @@
 #include <QLowEnergyDescriptor>
 #include <QLowEnergyService>
 
-ZmkBleLayerMonitor::ZmkBleLayerMonitor(QObject* parent) : QObject(parent) {}
+ZmkBleLayerMonitor::ZmkBleLayerMonitor(QObject* parent) : QObject(parent) {
+}
 
 ZmkBleLayerMonitor::~ZmkBleLayerMonitor() { stop(); }
 
@@ -21,10 +22,17 @@ void ZmkBleLayerMonitor::start() {
         return;
     }
     m_ctrl = QLowEnergyController::createCentral(QBluetoothAddress(m_address));
+    emit warningRaised(QStringLiteral("BLE connecting to ") + m_address);
     connect(m_ctrl, &QLowEnergyController::connected, this, &ZmkBleLayerMonitor::onConnected);
     connect(m_ctrl, &QLowEnergyController::disconnected, this, &ZmkBleLayerMonitor::onDisconnected);
     connect(m_ctrl, &QLowEnergyController::serviceDiscovered, this, &ZmkBleLayerMonitor::onServiceDiscovered);
     connect(m_ctrl, &QLowEnergyController::discoveryFinished, this, &ZmkBleLayerMonitor::onDiscoveryFinished);
+    connect(m_ctrl, &QLowEnergyController::errorOccurred, this, [this](QLowEnergyController::Error e) {
+        emit warningRaised(QStringLiteral("BLE error: ") + QString::number(int(e)));
+    });
+    connect(m_ctrl, &QLowEnergyController::stateChanged, this, [this](QLowEnergyController::ControllerState s) {
+        emit warningRaised(QStringLiteral("BLE state: ") + QString::number(int(s)));
+    });
     m_ctrl->connectToDevice();
 }
 
@@ -40,18 +48,28 @@ void ZmkBleLayerMonitor::stop() {
     }
 }
 
-void ZmkBleLayerMonitor::onConnected() { m_ctrl->discoverServices(); }
+void ZmkBleLayerMonitor::onConnected() {
+    emit warningRaised("BLE connected, discovering services...");
+    m_ctrl->discoverServices();
+}
 
-void ZmkBleLayerMonitor::onDisconnected() { emit warningRaised("BLE disconnected"); }
+void ZmkBleLayerMonitor::onDisconnected() {
+    emit warningRaised("BLE disconnected");
+}
 
 void ZmkBleLayerMonitor::onServiceDiscovered(const QBluetoothUuid& uuid) {
     if (uuid == m_serviceUuid) {
         if (m_service) return;
         m_service = m_ctrl->createServiceObject(uuid);
-        if (!m_service) return;
+        if (!m_service) {
+            emit warningRaised("Failed to create service object for target UUID");
+            return;
+        }
         connect(m_service, &QLowEnergyService::stateChanged, this, &ZmkBleLayerMonitor::onServiceStateChanged);
         connect(m_service, &QLowEnergyService::characteristicChanged, this, &ZmkBleLayerMonitor::onCharacteristicChanged);
+        connect(m_service, &QLowEnergyService::characteristicRead, this, &ZmkBleLayerMonitor::onCharacteristicRead);
         m_service->discoverDetails();
+        emit warningRaised("Target service discovered; discovering details...");
     }
 }
 
@@ -69,7 +87,11 @@ void ZmkBleLayerMonitor::onServiceStateChanged(QLowEnergyService::ServiceState s
         auto cccd = ch.descriptor(QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration);
         if (cccd.isValid()) {
             m_service->writeDescriptor(cccd, QByteArray::fromHex("0100"));
+            emit warningRaised("Subscribed to notifications (CCCD 0x0100)");
         }
+
+        m_service->readCharacteristic(ch);
+        emit warningRaised("Requested initial read of layer characteristic");
     }
 }
 
@@ -77,5 +99,14 @@ void ZmkBleLayerMonitor::onCharacteristicChanged(const QLowEnergyCharacteristic&
     Q_UNUSED(ch);
     if (value.isEmpty()) return;
     const int layer = static_cast<unsigned char>(value[0]);
+    emit warningRaised(QStringLiteral("Layer value rx: ") + QString::number(layer));
+    emit layerChanged(layer);
+}
+
+void ZmkBleLayerMonitor::onCharacteristicRead(const QLowEnergyCharacteristic& ch, const QByteArray& value) {
+    if (ch.uuid() != m_charUuid) return;
+    if (value.isEmpty()) return;
+    const int layer = static_cast<unsigned char>(value[0]);
+    emit warningRaised(QStringLiteral("Layer value read: ") + QString::number(layer));
     emit layerChanged(layer);
 }

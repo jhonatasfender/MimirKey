@@ -8,7 +8,9 @@
 #include <QFileInfo>
 #include <QSocketNotifier>
 #include <QTime>
+#include <cerrno>
 #include <chrono>
+#include <cstring>
 #include <string>
 #include <system_error>
 
@@ -49,7 +51,12 @@ void EvdevKeyboardMonitor::openDevices() {
         char path[64];
         snprintf(path, sizeof(path), "/dev/input/event%d", i);
         int fd = ::open(path, O_RDONLY | O_NONBLOCK);
-        if (fd < 0) continue;
+        if (fd < 0) {
+            if (errno == EACCES || errno == EPERM) {
+                emit warningRaised(QString("Permission denied opening %1").arg(path));
+            }
+            continue;
+        }
         libevdev* dev = nullptr;
         if (libevdev_new_from_fd(fd, &dev) < 0) {
             ::close(fd);
@@ -65,8 +72,15 @@ void EvdevKeyboardMonitor::openDevices() {
         h.dev = dev;
         h.name = QString::fromUtf8(libevdev_get_name(dev));
         m_devices.push_back(h);
+        emit warningRaised(QString("Monitoring evdev device: %1 (%2)")
+                               .arg(h.name)
+                               .arg(path));
     }
-    if (m_devices.empty()) emit warningRaised("No keyboard-like evdev devices found.");
+    if (m_devices.empty()) {
+        emit warningRaised("No keyboard-like evdev devices found.");
+    } else {
+        emit warningRaised(QString("Total evdev keyboards: %1").arg(m_devices.size()));
+    }
 }
 
 void EvdevKeyboardMonitor::closeDevices() {

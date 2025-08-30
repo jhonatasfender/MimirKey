@@ -11,12 +11,20 @@ class KeymapViewModel : public QObject {
     Q_PROPERTY(QStringList layers READ layers NOTIFY layersChanged)
     Q_PROPERTY(int activeLayer READ activeLayer NOTIFY activeLayerChanged)
 
-public:
+   public:
     explicit KeymapViewModel(QObject* parent = nullptr);
 
     void setClipboardPort(ClipboardPort* port) { m_clipboardPort = port; }
     Q_INVOKABLE void copyText(const QString& text);
     Q_INVOKABLE void log(const QString& level, const QString& message, const QString& metaJson);
+    Q_INVOKABLE void requestEvdevPermissions();
+
+#if KEYMAPS_ENABLE_BLE
+    Q_INVOKABLE void setBleTarget(const QString& macAddress,
+                                  const QString& serviceUuid,
+                                  const QString& characteristicUuid);
+    Q_INVOKABLE void startBle();
+#endif
 
     QStringList layers() const { return m_layers; }
     int activeLayer() const { return m_activeLayer; }
@@ -29,14 +37,25 @@ public:
 
     Q_INVOKABLE void loadDemo();
 
-signals:
+   signals:
     void layersChanged();
     void activeLayerChanged();
     void keyEventCaptured(const QString& deviceName, int code, int value, quint64 usec);
     void logMessage(const QString& level, const QString& message, const QString& metaJson);
 
-private:
+   private:
     QStringList m_layers;
     ClipboardPort* m_clipboardPort{nullptr};
     int m_activeLayer{0};
+
+#if KEYMAPS_ENABLE_BLE
+   public:
+    void setBleMonitor(class ZmkBleLayerMonitor* monitor);
+
+   private:
+    class ZmkBleLayerMonitor* m_bleMonitor{nullptr};
+    QString m_bleMac;
+    QString m_bleServiceUuid;
+    QString m_bleCharUuid;
+#endif
 };

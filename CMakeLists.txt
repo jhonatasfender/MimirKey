@@ -104,6 +104,9 @@ endif()
 target_compile_definitions(
   ${PROJECT_NAME} PRIVATE KEYMAPS_ENABLE_BLE=$<BOOL:${HAVE_QT_BLUETOOTH}>)
 
+target_compile_definitions(
+  ${PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:QT_QML_DEBUG>)
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBEVDEV REQUIRED libevdev)
 target_include_directories(${PROJECT_NAME} PRIVATE ${LIBEVDEV_INCLUDE_DIRS})
@@ -127,10 +130,14 @@ qt_add_qml_module(
   src/interface/qml/components/TopBar.qml
   src/interface/qml/components/KeymapView.qml
   src/interface/qml/components/LogPanel.qml
+  src/interface/qml/components/MainContent.qml
   RESOURCES
   src/interface/qml/assets/keymap.svg)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
+
+# Install helper script
+install(PROGRAMS scripts/grant_evdev_access.sh DESTINATION bin)
 
 add_custom_target(
   format

@@ -7,7 +7,9 @@ Item {
 
     property rect svgViewRect: Qt.rect(0, 0, 956, 390)
 
-    ListModel { id: logsModel }
+    ListModel {
+        id: logsModel
+    }
 
     function log(level, message, meta) {
         const entry = {
@@ -44,16 +46,16 @@ Item {
                 clipRect: root.svgViewRect
                 onStatusChanged: function (status, w, h) {
                     root.log("debug", "svg.status", {
-                        status: status,
-                        paintedWidth: w,
-                        paintedHeight: h,
-                        clip: {
-                            x: root.svgViewRect.x,
-                            y: root.svgViewRect.y,
-                            w: root.svgViewRect.width,
-                            h: root.svgViewRect.height
-                        }
-                    });
+                            status: status,
+                            paintedWidth: w,
+                            paintedHeight: h,
+                            clip: {
+                                x: root.svgViewRect.x,
+                                y: root.svgViewRect.y,
+                                w: root.svgViewRect.width,
+                                h: root.svgViewRect.height
+                            }
+                        });
                 }
             }
         }
@@ -90,30 +92,50 @@ Item {
 
         function onKeyEventCaptured(deviceName, code, value, usec) {
             root.log(value ? "info" : "debug", "key.event", {
-                device: deviceName,
-                code: code,
-                value: value,
-                usec: usec
-            })
+                    device: deviceName,
+                    code: code,
+                    value: value,
+                    usec: usec
+                });
         }
 
         function onLogMessage(level, message, metaJson) {
-            let metaObj = undefined
+            let metaObj = undefined;
             try {
-                metaObj = metaJson ? JSON.parse(metaJson) : undefined
+                metaObj = metaJson ? JSON.parse(metaJson) : undefined;
             } catch (e) {
-                metaObj = {parseError: String(e), raw: metaJson}
+                metaObj = {
+                    parseError: String(e),
+                    raw: metaJson
+                };
             }
-            root.log(level, message, metaObj)
+            root.log(level, message, metaObj);
         }
 
         function onLayersChanged() {
             root.log("info", "layers.loaded", {
-                count: vmInjected.layers.length,
-                names: vmInjected.layers
-            });
+                    count: vmInjected.layers.length,
+                    names: vmInjected.layers
+                });
+        }
+    }
+
+    Button {
+        id: permBtn
+        text: "Grant evdev access"
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        visible: false
+        onClicked: vmInjected.requestEvdevPermissions()
+    }
+
+    Connections {
+        target: vmInjected
+        function onLogMessage(level, message, metaJson) {
+            if (message === "evdev.warning" && metaJson && metaJson.indexOf("Permission denied") !== -1) {
+                permBtn.visible = true;
+            }
         }
     }
 }
-
-

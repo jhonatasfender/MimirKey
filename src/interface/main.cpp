@@ -23,14 +23,18 @@ int main(int argc, char* argv[]) {
     auto* evdev = new EvdevKeyboardMonitor(nullptr);
     QObject::connect(evdev, &EvdevKeyboardMonitor::keyEventCaptured, &vm,
                      &KeymapViewModel::keyEventCaptured);
+    QObject::connect(evdev, &EvdevKeyboardMonitor::warningRaised, &vm, [&](const QString& msg) {
+        vm.log("warn", "evdev.warning", msg);
+    });
     evdev->start();
     QObject::connect(&app, &QCoreApplication::aboutToQuit, evdev, &EvdevKeyboardMonitor::stop);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, evdev, &QObject::deleteLater);
 
 #if KEYMAPS_ENABLE_BLE
     auto* ble = new ZmkBleLayerMonitor(&vm);
-    QObject::connect(ble, &ZmkBleLayerMonitor::layerChanged, &vm, [&](int layer) {
-        vm.setActiveLayer(layer);
+    vm.setBleMonitor(ble);
+    QObject::connect(ble, &ZmkBleLayerMonitor::warningRaised, &vm, [&](const QString& msg) {
+        vm.log("warn", "ble.warning", msg);
     });
 #endif
     engine.rootContext()->setContextProperty("vmInjected", &vm);
