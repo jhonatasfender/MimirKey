@@ -1,6 +1,8 @@
 #include "ZmkBleLayerMonitor.hpp"
 
 #include <QBluetoothAddress>
+#include <QBluetoothDeviceDiscoveryAgent>
+#include <QBluetoothDeviceInfo>
 #include <QLowEnergyCharacteristic>
 #include <QLowEnergyController>
 #include <QLowEnergyDescriptor>
@@ -17,8 +19,8 @@ void ZmkBleLayerMonitor::setCharacteristicUuid(const QBluetoothUuid& ch) { m_cha
 
 void ZmkBleLayerMonitor::start() {
     if (m_ctrl) return;
-    if (m_address.isEmpty() || m_serviceUuid.isNull() || m_charUuid.isNull()) {
-        emit warningRaised("BLE not configured: address/service/characteristic missing");
+    if (m_address.isEmpty()) {
+        emit warningRaised("BLE not configured: address missing (auto discovery not started)");
         return;
     }
     m_ctrl = QLowEnergyController::createCentral(QBluetoothAddress(m_address));
@@ -36,7 +38,28 @@ void ZmkBleLayerMonitor::start() {
     m_ctrl->connectToDevice();
 }
 
+void ZmkBleLayerMonitor::startAuto() {
+    if (m_ctrl || m_discovery) return;
+    emit warningRaised("BLE scanning for devices...");
+    m_discovery = new QBluetoothDeviceDiscoveryAgent(this);
+    m_discovery->setLowEnergyDiscoveryTimeout(5000);
+    connect(m_discovery, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered, this,
+            &ZmkBleLayerMonitor::onDeviceDiscovered);
+    connect(m_discovery, &QBluetoothDeviceDiscoveryAgent::finished, this,
+            &ZmkBleLayerMonitor::onDeviceScanFinished);
+    connect(m_discovery, &QBluetoothDeviceDiscoveryAgent::errorOccurred, this,
+            [this](QBluetoothDeviceDiscoveryAgent::Error e) {
+                emit warningRaised(QStringLiteral("BLE scan error: ") + QString::number(int(e)));
+            });
+    m_discovery->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
+}
+
 void ZmkBleLayerMonitor::stop() {
+    if (m_discovery) {
+        m_discovery->stop();
+        m_discovery->deleteLater();
+        m_discovery = nullptr;
+    }
     if (m_service) {
         m_service->deleteLater();
         m_service = nullptr;
@@ -58,40 +81,54 @@ void ZmkBleLayerMonitor::onDisconnected() {
 }
 
 void ZmkBleLayerMonitor::onServiceDiscovered(const QBluetoothUuid& uuid) {
-    if (uuid == m_serviceUuid) {
-        if (m_service) return;
-        m_service = m_ctrl->createServiceObject(uuid);
-        if (!m_service) {
-            emit warningRaised("Failed to create service object for target UUID");
-            return;
-        }
-        connect(m_service, &QLowEnergyService::stateChanged, this, &ZmkBleLayerMonitor::onServiceStateChanged);
-        connect(m_service, &QLowEnergyService::characteristicChanged, this, &ZmkBleLayerMonitor::onCharacteristicChanged);
-        connect(m_service, &QLowEnergyService::characteristicRead, this, &ZmkBleLayerMonitor::onCharacteristicRead);
-        m_service->discoverDetails();
-        emit warningRaised("Target service discovered; discovering details...");
+    if (!m_serviceUuid.isNull() && uuid != m_serviceUuid) return;
+    if (m_service) return;
+    m_service = m_ctrl->createServiceObject(uuid);
+    if (!m_service) {
+        emit warningRaised("Failed to create service object");
+        return;
     }
+    connect(m_service, &QLowEnergyService::stateChanged, this, &ZmkBleLayerMonitor::onServiceStateChanged);
+    connect(m_service, &QLowEnergyService::characteristicChanged, this, &ZmkBleLayerMonitor::onCharacteristicChanged);
+    connect(m_service, &QLowEnergyService::characteristicRead, this, &ZmkBleLayerMonitor::onCharacteristicRead);
+    m_service->discoverDetails();
+    emit warningRaised("Service discovered; discovering details...");
 }
 
 void ZmkBleLayerMonitor::onDiscoveryFinished() {
-    if (!m_service) emit warningRaised("ZMK Studio service not found");
+    if (!m_service) emit warningRaised("BLE: no service selected during discovery");
 }
 
 void ZmkBleLayerMonitor::onServiceStateChanged(QLowEnergyService::ServiceState s) {
     if (s == QLowEnergyService::ServiceDiscovered) {
-        auto ch = m_service->characteristic(m_charUuid);
-        if (!ch.isValid()) {
-            emit warningRaised("ZMK layer characteristic not found");
+        QLowEnergyCharacteristic targetChar;
+        if (!m_charUuid.isNull()) {
+            targetChar = m_service->characteristic(m_charUuid);
+        } else {
+            const auto chars = m_service->characteristics();
+            for (const auto& c : chars) {
+                const auto props = c.properties();
+                if (props.testFlag(QLowEnergyCharacteristic::Notify) ||
+                    props.testFlag(QLowEnergyCharacteristic::Indicate)) {
+                    targetChar = c;
+                    m_charUuid = c.uuid();
+                    emit warningRaised(QStringLiteral("Auto-selected characteristic: ") + m_charUuid.toString());
+                    break;
+                }
+            }
+        }
+        if (!targetChar.isValid()) {
+            emit warningRaised("No suitable characteristic found");
             return;
         }
-        auto cccd = ch.descriptor(QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration);
+        auto cccd = targetChar.descriptor(QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration);
         if (cccd.isValid()) {
             m_service->writeDescriptor(cccd, QByteArray::fromHex("0100"));
             emit warningRaised("Subscribed to notifications (CCCD 0x0100)");
         }
 
-        m_service->readCharacteristic(ch);
-        emit warningRaised("Requested initial read of layer characteristic");
+        m_service->readCharacteristic(targetChar);
+        emit warningRaised("Requested initial read of characteristic");
     }
 }
 
@@ -109,4 +146,23 @@ void ZmkBleLayerMonitor::onCharacteristicRead(const QLowEnergyCharacteristic& ch
     const int layer = static_cast<unsigned char>(value[0]);
     emit warningRaised(QStringLiteral("Layer value read: ") + QString::number(layer));
     emit layerChanged(layer);
+}
+
+void ZmkBleLayerMonitor::onDeviceDiscovered(const QBluetoothDeviceInfo& info) {
+    const QString name = info.name().toLower();
+
+    if (name.contains("zmk") || name.contains("keyboard") || name.contains("sofle")) {
+        m_address = info.address().toString();
+        emit warningRaised(QStringLiteral("Auto-selected device: ") + info.name() + " (" + m_address + ")");
+        if (m_discovery) {
+            m_discovery->stop();
+        }
+        start();
+    }
+}
+
+void ZmkBleLayerMonitor::onDeviceScanFinished() {
+    if (m_address.isEmpty()) {
+        emit warningRaised("BLE scan finished: no matching device found");
+    }
 }

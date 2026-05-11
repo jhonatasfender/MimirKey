@@ -24,6 +24,7 @@ class KeymapViewModel : public QObject {
                                   const QString& serviceUuid,
                                   const QString& characteristicUuid);
     Q_INVOKABLE void startBle();
+    Q_INVOKABLE void startBleAuto();
 #endif
 
     QStringList layers() const { return m_layers; }

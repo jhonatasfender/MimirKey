@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QSocketNotifier>
 #include <QString>
 #include <QStringList>
 #include <QThread>
@@ -24,7 +25,7 @@ class EvdevKeyboardMonitor : public QObject {
     void warningRaised(const QString& message);
 
    private:
-    void runLoop();
+    void onThreadStarted();
     void openDevices();
     void closeDevices();
 
@@ -32,6 +33,7 @@ class EvdevKeyboardMonitor : public QObject {
         int fd{-1};
         libevdev* dev{nullptr};
         QString name;
+        QSocketNotifier* notifier{nullptr};
     };
 
     std::vector<DeviceHandle> m_devices;

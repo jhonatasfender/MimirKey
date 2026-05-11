@@ -32,5 +32,11 @@ ApplicationWindow {
         anchors.fill: parent
     }
 
-    Component.onCompleted: vmInjected.loadDemo()
+    Component.onCompleted: {
+        vmInjected.requestEvdevPermissions();
+        vmInjected.loadDemo();
+        if (typeof vmInjected.startBleAuto === 'function') {
+            vmInjected.startBleAuto();
+        }
+    }
 }

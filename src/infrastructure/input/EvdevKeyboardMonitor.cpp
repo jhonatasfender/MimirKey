@@ -30,7 +30,7 @@ EvdevKeyboardMonitor::~EvdevKeyboardMonitor() { stop(); }
 void EvdevKeyboardMonitor::start() {
     if (m_running.exchange(true)) return;
     m_thread = std::make_unique<QThread>();
-    connect(m_thread.get(), &QThread::started, this, &EvdevKeyboardMonitor::runLoop);
+    connect(m_thread.get(), &QThread::started, this, &EvdevKeyboardMonitor::onThreadStarted);
     this->moveToThread(m_thread.get());
     m_thread->start();
 }
@@ -85,25 +85,36 @@ void EvdevKeyboardMonitor::openDevices() {
 
 void EvdevKeyboardMonitor::closeDevices() {
     for (auto& h : m_devices) {
+        if (h.notifier) {
+            h.notifier->setEnabled(false);
+            h.notifier->deleteLater();
+            h.notifier = nullptr;
+        }
         if (h.dev) libevdev_free(h.dev);
         if (h.fd >= 0) ::close(h.fd);
     }
     m_devices.clear();
 }
 
-void EvdevKeyboardMonitor::runLoop() {
+void EvdevKeyboardMonitor::onThreadStarted() {
     openDevices();
-    while (m_running.load()) {
-        for (auto& h : m_devices) {
+    for (auto& h : m_devices) {
+        h.notifier = new QSocketNotifier(h.fd, QSocketNotifier::Read, this);
+        connect(h.notifier, &QSocketNotifier::activated, this, [this, &h](int) {
+            if (!m_running.load()) return;
             input_event ev;
-            int rc = libevdev_next_event(h.dev, LIBEVDEV_READ_FLAG_NORMAL, &ev);
-            if (rc == 0) {
-                if (ev.type == EV_KEY) {
-                    quint64 ts = static_cast<quint64>(ev.time.tv_sec) * 1000000ull + static_cast<quint64>(ev.time.tv_usec);
-                    emit keyEventCaptured(h.name, ev.code, ev.value, ts);
+            while (true) {
+                int rc = libevdev_next_event(h.dev, LIBEVDEV_READ_FLAG_NORMAL, &ev);
+                if (rc == 0) {
+                    if (ev.type == EV_KEY) {
+                        quint64 ts = static_cast<quint64>(ev.time.tv_sec) * 1000000ull +
+                                     static_cast<quint64>(ev.time.tv_usec);
+                        emit keyEventCaptured(h.name, ev.code, ev.value, ts);
+                    }
+                } else {
+                    break;
                 }
             }
-        }
-        usleep(2000);
+        });
     }
 }

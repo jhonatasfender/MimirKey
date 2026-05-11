@@ -75,4 +75,14 @@ void KeymapViewModel::startBle() {
     m_bleMonitor->setCharacteristicUuid(QBluetoothUuid(m_bleCharUuid));
     m_bleMonitor->start();
 }
+
+void KeymapViewModel::startBleAuto() {
+    if (!m_bleMonitor) {
+        emit logMessage("warn", "ble.error", QStringLiteral("No monitor"));
+        return;
+    }
+
+    m_bleMonitor->stop();
+    m_bleMonitor->startAuto();
+}
 #endif

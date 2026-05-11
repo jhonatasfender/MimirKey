@@ -2,11 +2,15 @@
 
 #include <QBluetoothUuid>
 #include <QObject>
+#include <QStringList>
+#include <QList>
 #include <memory>
 
 class QLowEnergyController;
 class QLowEnergyService;
 class QLowEnergyCharacteristic;
+class QBluetoothDeviceDiscoveryAgent;
+class QBluetoothDeviceInfo;
 
 class ZmkBleLayerMonitor : public QObject {
     Q_OBJECT
@@ -20,6 +24,7 @@ class ZmkBleLayerMonitor : public QObject {
 
     Q_INVOKABLE void start();
     Q_INVOKABLE void stop();
+    Q_INVOKABLE void startAuto();
 
    signals:
     void layerChanged(int activeLayer);
@@ -33,6 +38,8 @@ class ZmkBleLayerMonitor : public QObject {
     void onServiceStateChanged(QLowEnergyService::ServiceState);
     void onCharacteristicChanged(const QLowEnergyCharacteristic&, const QByteArray&);
     void onCharacteristicRead(const QLowEnergyCharacteristic&, const QByteArray&);
+    void onDeviceDiscovered(const QBluetoothDeviceInfo& info);
+    void onDeviceScanFinished();
 
    private:
     QString m_address;
@@ -41,4 +48,6 @@ class ZmkBleLayerMonitor : public QObject {
 
     QLowEnergyController* m_ctrl{nullptr};
     QLowEnergyService* m_service{nullptr};
+    QBluetoothDeviceDiscoveryAgent* m_discovery{nullptr};
+    QList<QBluetoothUuid> m_discoveredServices;
 };

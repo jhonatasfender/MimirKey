@@ -104,8 +104,8 @@ endif()
 target_compile_definitions(
   ${PROJECT_NAME} PRIVATE KEYMAPS_ENABLE_BLE=$<BOOL:${HAVE_QT_BLUETOOTH}>)
 
-target_compile_definitions(
-  ${PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:QT_QML_DEBUG>)
+target_compile_definitions(${PROJECT_NAME}
+                           PRIVATE $<$<CONFIG:Debug>:QT_QML_DEBUG>)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBEVDEV REQUIRED libevdev)
